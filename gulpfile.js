@@ -5,6 +5,10 @@ const { src, dest, parallel, series, watch } = require('gulp')
 // 自动加载插件， 就不用每次手动载入插件，通过 gulp-load-plugins插件完成自动载入插件
 const plugins = require('gulp-load-plugins')()
 const minimist = require('minimist')
+const baseConfig = require('./gulpFiles/baseConfig')
+const devServerConfig = require('./gulpFiles/devServer.config')
+
+
 
 // 简单定义数据
 const data = {
@@ -50,7 +54,7 @@ const data = {
 
 // 清除之前的编译出来的文件
 const clean = () => { 
-  return del(['dist', 'temp'])
+  return del([baseConfig.build.dist, baseConfig.build.temp])
 }
 
 /**
@@ -60,9 +64,10 @@ const clean = () => {
  * {outputStyle: 'expanded'} 表示通过sass 指定选项表示构建生成的样式代码 {} 完全展开
 */
 const style = () => { 
-  return src('src/assets/styles/*.scss', { base: 'src'}) 
+  // return src('src/assets/styles/*.scss', { base: 'src'}) 
+  return src(baseConfig.build.paths.styles, { base: baseConfig.build.src })
     .pipe(plugins.sass({outputStyle: 'expanded'})) 
-    .pipe(dest('temp'))
+    .pipe(dest(baseConfig.build.temp))
     .pipe(bs.reload({ stream: true })) // 以流的方式
 }
 
@@ -71,9 +76,9 @@ const style = () => {
  * babel({ presets: ['@babel/preset-env']})转换es6+ 的新特性， 这样使得在开发过程中能够使用过es的新特性， 而在项目上线使用前转换成浏览器能够执行的格式。presets: ['@babel/preset-env'] 能够通过在项目项目中新建.bablerc文件设置
 */
 const script = () => { 
-  return src('src/assets/scripts/*.js', { base: 'src' })
-    .pipe(plugins.babel({ presets: ['@babel/preset-env']}))
-    .pipe(dest('temp'))
+  return src(baseConfig.build.paths.scripts, { base: baseConfig.build.src })
+    .pipe(plugins.babel({ presets: [require('@babel/preset-env')]}))
+    .pipe(dest(baseConfig.build.temp))
     .pipe(bs.reload({ stream: true }))
 }
 
@@ -81,66 +86,64 @@ const script = () => {
  * 完成对项目中页面的构建
  * 页面模板编译
 */
-// src('src/**/*.html', { base: 'src' }) 表示匹配src 目录下任意子文件夹下的html 文件
+// src('src/**/*.html', { base: baseConfig.build.src }) 表示匹配src 目录下任意子文件夹下的html 文件
 const page = () => { 
-  return src('src/*.html', { base: 'src' })
-    .pipe(plugins.swig({ data, defaults: { cache: false } })) //swig 模板引擎转换插件 .pipe(swig({ data }))  传入数据
-    .pipe(dest('temp'))
+  return src(baseConfig.build.paths.html, { base: baseConfig.build.src })
+    .pipe(plugins.swig({ data: baseConfig.data, defaults: { cache: false } })) //swig 模板引擎转换插件 .pipe(swig({ data }))  传入数据
+    .pipe(dest(baseConfig.build.temp))
     .pipe(bs.reload({ stream: true }))
 }
 
 /**
  * 图片转换*/
 const image = () => { 
-  return src('src/assets/images/**', { base: 'src' })
+  return src(baseConfig.build.paths.images, { base: baseConfig.build.src })
     .pipe(plugins.imagemin())
-    .pipe(dest('dist'))
+    .pipe(dest(baseConfig.build.dist))
 } 
 
 /**
  * 字体文件
 */
 const font = () => {
-  return src('src/assets/fonts/**', { base: 'src' })
+  return src(baseConfig.build.paths.fonts, { base: baseConfig.build.src })
     .pipe(plugins.imagemin())
-    .pipe(dest('dist'))
+    .pipe(dest(baseConfig.build.dist))
 }
 
 /**
  * 额外的将public 文件夹下的文件拷贝过去
 */
 const extra = () => { 
-  return src('public/**', { base: 'public' })
-    .pipe(dest('dist'))
+  return src(baseConfig.build.paths.public, { base: baseConfig.build.public })
+    .pipe(dest(baseConfig.build.dist))
 }
 
 /**
  * 热更新(自动编译刷新浏览器页面)
 */
 const serve = () => { 
-  watch('src/assets/styles/*.scss', style)
-  watch('src/assets/scripts/*.js', script)
-  watch('src/*.html', page)
-  // watch('src/assets/images/**', image)
-  // watch('src/assets/fonts/**', font)
-  // watch('public/**', extra)
+  watch(baseConfig.build.paths.styles, style)
+  watch(baseConfig.build.paths.scripts, script)
+  watch(baseConfig.build.paths.html, page)
   watch([
-    'src/assets/images/**',
-    'src/assets/fonts/**',
-    'public/**'
+    baseConfig.build.paths.images,
+    baseConfig.build.paths.fonts,
+    baseConfig.build.paths.public
   ], bs.reload)
-  bs.init({
-    notify: false, // 设置为false, 关闭browser-sync连接成功的提示
-    port: 8000,
-    // open: false, // 是否自动打开浏览器
-    // files: 'dist/**',
-    server: {
-      baseDir: ['temp', 'src', 'public'],
-      routes: {
-        '/node_modules': './node_modules'
-      }
-    }
-  })
+  // bs.init({
+  //   notify: false, // 设置为false, 关闭browser-sync连接成功的提示
+  //   port: 8000,
+  //   // open: false, // 是否自动打开浏览器
+  //   // files: 'dist/**',
+  //   server: {
+  //     baseDir: [baseConfig.build.temp, baseConfig.build.src, baseConfig.build.public],
+  //     routes: {
+  //       '/node_modules': './node_modules'
+  //     }
+  //   }
+  // })
+  bs.init(devServerConfig)
 }
 
 /**
@@ -148,8 +151,8 @@ const serve = () => {
  * 压缩HTML,CSS, JS
 */
 const useref = () => { 
-  return src('temp/*.html', { base: 'temp' })
-    .pipe(plugins.useref({ searchPath: ['temp', '.'] }))
+  return src(baseConfig.build.paths.tmpHtml, { base: baseConfig.build.temp })
+    .pipe(plugins.useref({ searchPath: [baseConfig.build.temp, '.'] }))
     // html js css 压缩
     .pipe(plugins.if(/\.js$/, plugins.uglify()))
     .pipe(plugins.if(/\.css$/, plugins.cleanCss()))
@@ -158,7 +161,7 @@ const useref = () => {
       minifyCSS: true, // minifyCSS: true, 压缩html 中 css 中的空格
       minifyJS: true // minifyJS: true 压缩html文件中的js 空格
     }))) 
-    .pipe(dest('dist'))
+    .pipe(dest(baseConfig.build.dist))
 }
 
 /**
@@ -195,7 +198,7 @@ const predeploy = () => {
   if (!env) throw new Error('Missing NODE_ENV')
   const ftpConf = gulpConf.ftp[env]
   console.log('## 正在部署到远端服务器（' + ftpConf.host + ':' + ftpConf.remotePath + '）...')
-  return gulp.src('dist/**')
+  return gulp.src(`${baseConfig.build.dist}/**`)
     .pipe(plugins.sftp(ftpConf))
 }
 

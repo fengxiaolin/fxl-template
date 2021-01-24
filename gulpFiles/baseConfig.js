@@ -1,9 +1,10 @@
 const args = process.argv.slice(2)
 let data = null
+
 if (args.includes('--production')) {
-  data = require('./product.js')
+  data = require('./product')
 } else { 
-  data = require('./dev.js')
+  data = require('./dev')
 }
 
 
