@@ -1,0 +1,10 @@
+scss 编译：gulp-sass
+scripts 编译：gulp-babel @babel/core @babel/preset-env
+模板编译：gulp-swig
+图片：gulp-imagemin
+删除：del
+自动加载插件：gulp-load-plugins
+测试服务器：browser-sync
+文件整理：gulp-useref
+文件压缩：gulp-htmlmin gulp-uglify gulp-clean-css
+gulp 三元插件：gulp-if
